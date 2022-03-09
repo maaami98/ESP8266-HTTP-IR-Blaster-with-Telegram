@@ -58,17 +58,15 @@ After flashing, you can use the device like so:
 2. Forward whichever port your ESP8266 web server is running on so that it can be accessed from outside your local network, this is critical since Alexa commands come from Amazon's servers, not locally
 3. Download the IR Controller Alexa skill and start creating your devices. Each IR command will require a URL which can be saved. Choose whichever functionality you desire. Information on creating the URLs can be found below
 
-Alexa Setup
+Telegram Setup
 ---------------
-1. Download the `IR Controller` skill from the Alexa skill store
-2. Login with your Amazon account
-3. Go to https://tehpsyc.pythonanywhere.com/
-4. Login with the same Amazon account you used for the skill login
-5. Create a new device by specifying the friendlyName, endpointId, and description
-6. Add whichever functionality you want your device to have by scrolling through the options on the page
-7. Save your new device
-8. Run device discovery on your echo device by saying "Alexa, discover devices" or via https://alexa.amazon.com/
-9. Verify that your new device was discovered online or in the Alexa app and enjoy!
+1. Enter @Botfather in the search tab and choose this bot.
+ ![image](https://user-images.githubusercontent.com/35247648/157505406-2414e2d8-c4ba-43ad-b2a5-9401a72dae35.png)
+2. Choose or type the /newbot command and send it.
+3. After you choose a suitable name for your bot — the bot is created. You will receive a message with a link to your bot t.me/<bot_username>, recommendations to set up a profile picture, description, and a list of commands to manage your new bot.
+
+![image](https://user-images.githubusercontent.com/35247648/157505674-1089b400-12b8-4708-adbc-a216daccd270.png)
+4.Send a message to the @userinfobot bot and it will tell you your Telegram ID.
 
 Server Info
 ---------------
