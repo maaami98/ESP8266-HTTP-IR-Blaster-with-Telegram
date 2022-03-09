@@ -13,6 +13,7 @@
 #include <ESP8266HTTPClient.h>
 #include <ArduinoOTA.h>
 #include "sha256.h"
+#include "CTBot.h"
 
 #include <Ticker.h>                                           // For LED status
 #include <TimeLib.h>
@@ -34,6 +35,7 @@ const unsigned int captureBufSize = 1024;                      // Size of the IR
 
 const bool toggleRC = true;                                    // Toggle RC signals every other transmission
 
+CTBot myBot;
 #if defined(ARDUINO_ESP8266_WEMOS_D1R1) || defined(ARDUINO_ESP8266_WEMOS_D1MINI) || defined(ARDUINO_ESP8266_WEMOS_D1MINIPRO) || defined(ARDUINO_ESP8266_WEMOS_D1MINILITE)
 const uint16_t  pinr1 = D5;                                          // Receiving pin (GPIO14)
 const uint16_t  pins1 = D6;                                          // Transmitting preset 1 (GPIO12)
@@ -44,7 +46,7 @@ const uint16_t  pins4 = 13;                                          // Transmit
 #else
 const uint16_t  pinr1 = 14;                                          // Receiving pin
 const uint16_t  pins1 = 4;                                           // Transmitting preset 1
-const uint16_t  configpin = 10;                                      // Reset Pin
+const uint16_t  configpin = 10;                                       // Reset Pin
 const uint16_t  pins2 = 5;                                           // Transmitting preset 2
 const uint16_t  pins3 = 12;                                          // Transmitting preset 3
 const uint16_t  pins4 = 13;                                          // Transmitting preset 4
@@ -60,6 +62,8 @@ char passcode[20] = "";
 char host_name[20] = "";
 char port_str[6] = "80";
 char user_id[60] = "";
+char bot_token[50] = "";
+
 
 // Do not modify these values with your own, they are placeholder values that WiFiManager will overwrite
 char static_ip[16] = "10.0.1.10";
@@ -283,7 +287,7 @@ bool allowLocalBypass(IPAddress clientIP) {
 bool isPasscodeValid(String pass) {
   return ((strlen(passcode) == 0) || (pass == passcode));
 }
-
+/*
 //+=============================================================================
 // Get User_ID from Amazon Token (memory intensive and causes crashing)
 //
@@ -310,7 +314,7 @@ String getUserID(String token)
   http.end();
   return uid;
 }
-
+*/
 
 //+=============================================================================
 // Toggle state
@@ -453,6 +457,7 @@ bool setupWifi(bool resetConf) {
           if (json.containsKey("hostname")) strncpy(host_name, json["hostname"], 20);
           if (json.containsKey("passcode")) strncpy(passcode, json["passcode"], 20);
           if (json.containsKey("user_id")) strncpy(user_id, json["user_id"], 60);
+          if (json.containsKey("bot_token")) strncpy(bot_token, json["bot_token"], 50);
           if (json.containsKey("port_str")) {
             strncpy(port_str, json["port_str"], 6);
             port = atoi(json["port_str"]);
@@ -476,11 +481,14 @@ bool setupWifi(bool resetConf) {
   wifiManager.addParameter(&custom_passcode);
   WiFiManagerParameter custom_port("port_str", "Choose a port", port_str, 6);
   wifiManager.addParameter(&custom_port);
-  WiFiManagerParameter custom_userid("user_id", "Enter your Amazon user_id", user_id, 60);
+  WiFiManagerParameter custom_userid("user_id", "Enter your Telegram User Id" , user_id, 60);
   wifiManager.addParameter(&custom_userid);
-
+  WiFiManagerParameter custom_token("bot_token", "Enter your Telegram BotToken" , bot_token, 50);
+  wifiManager.addParameter(&custom_token);
   wifiManager.setShowStaticFields(true);
   wifiManager.setShowDnsFields(true);
+  
+
 
   IPAddress sip, sgw, ssn, dns;
   sip.fromString(static_ip);
@@ -511,6 +519,7 @@ bool setupWifi(bool resetConf) {
   strncpy(passcode, custom_passcode.getValue(), 20);
   strncpy(port_str, custom_port.getValue(), 6);
   strncpy(user_id, custom_userid.getValue(), 60);
+  strncpy(bot_token, custom_token.getValue(), 50);
   port = atoi(port_str);
 
   if (server != NULL) {
@@ -531,6 +540,7 @@ bool setupWifi(bool resetConf) {
     json["passcode"] = passcode;
     json["port_str"] = port_str;
     json["user_id"] = user_id;
+    json["bot_token"] = bot_token;
     json["ip"] = WiFi.localIP().toString();
     json["gw"] = WiFi.gatewayIP().toString();
     json["sn"] = WiFi.subnetMask().toString();
@@ -599,6 +609,8 @@ void setup() {
     Serial.print(".");
   }
 
+  myBot.setTelegramToken(bot_token);
+ 
   wifi_set_sleep_type(LIGHT_SLEEP_T);
   digitalWrite(ledpin, LOW);
   // Turn off the led in 2s
@@ -1711,12 +1723,42 @@ void copyCode (Code& c1, Code& c2) {
   c2.timestamp = c1.timestamp;
   c2.valid = c1.valid;
 }
+void handle_telegram(String msg){
+  Serial.println("Telegram Recieved:"+msg);
+  int rdelay = 1000;
+  int pulse =  1;
+  int pdelay =  100;
+  int repeat =  1;
+  int out =  1;
+  String type;
+  String data;
+  int len;
+  long address = 0;
+  char separator = '_';
+  String command=getValue(msg,'_',0);
+  
+  if (command=="/code") {
+    Serial.println("Telegram Code ");
+    
+    data = getValue(msg, separator, 1);
+    type = getValue(msg, separator, 2);
+    len = getValue(msg, separator, 3).toInt();
+    irblast(type, data, len, rdelay, pulse, pdelay, repeat, address, pickIRsend(out));
+  }
 
+    
+
+
+}
 void loop() {
   ArduinoOTA.handle();
   server->handleClient();
   decode_results  results;                                        // Somewhere to store the results
+  TBMessage msg;
 
+	// if there is an incoming message...
+	if (CTBotMessageText == myBot.getNewMessage(msg))msg.reply_to
+		handle_telegram(msg.text);
   if (irrecv.decode(&results) && !holdReceive) {                  // Grab an IR code
     Serial.println("Signal received:");
     fullCode(&results);                                           // Print the singleline value
@@ -1731,6 +1773,13 @@ void loop() {
     Serial.println("");                                           // Blank line between entries
     irrecv.resume();                                              // Prepare for the next value
     digitalWrite(ledpin, LOW);                                    // Turn on the LED for 0.5 seconds
+
+    //Send Telegram
+     myBot.sendMessage(atoi(user_id), "Signal received\nTime: " + epochToString(last_recv.timestamp)  + "\nData:" + String(last_recv.data)+ \
+     "\nType: "+ String(last_recv.encoding) +\
+     "\nBits: "+ String(last_recv.bits) +\
+     "\nAddr: " + String(last_recv.address )+\
+     "\n/code_" + last_recv.data + "_" + last_recv.encoding + "_" + last_recv.bits );       
     ticker.attach(0.5, disableLed);
   }
   delay(200);
