@@ -1757,7 +1757,7 @@ void loop() {
   TBMessage msg;
 
 	// if there is an incoming message...
-	if (CTBotMessageText == myBot.getNewMessage(msg))msg.reply_to
+	if (CTBotMessageText == myBot.getNewMessage(msg))
 		handle_telegram(msg.text);
   if (irrecv.decode(&results) && !holdReceive) {                  // Grab an IR code
     Serial.println("Signal received:");
